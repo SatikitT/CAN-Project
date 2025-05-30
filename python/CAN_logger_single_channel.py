@@ -17,8 +17,6 @@ last_time = 0
 bit_data = []
 bit_duration = 20  
 
-done = False
-
 ser = serial.Serial(PORT, BAUD, timeout=1)
 
 def decode_8byte_aligned(data: bytes):
@@ -47,17 +45,13 @@ def decode_8byte_aligned(data: bytes):
                 state_data.clear()
                 timestamp_data.clear()
                 total_time = 0
-                current_bit_state_percentage = [0, 0]
-                current_bit_index = 0
                 bit_data = []
-                print("---------------------------------------------------------------")
 
             if len(state_data) >= 1:
                 state_data.append(state_data[-1])
-            state_data.append(state)
-
-            if len(timestamp_data) >= 1:
                 timestamp_data.append(timestamp)
+                
+            state_data.append(state)
             timestamp_data.append(timestamp)
 
             duration = timestamp - last_time
@@ -77,9 +71,6 @@ fig, ax = plt.subplots()
 
 def update(frame):
     global state_data, timestamp_data, bit_data, done
-
-    if done:
-        return
 
     data = ser.read(128)
     if data:
@@ -142,7 +133,7 @@ def update(frame):
             else:
                 if count >= 5:
                     stuff_bit_count += 1
-                    # ax.axvline(x_pos, color='red', linestyle='--', linewidth=1)
+
                     ax.text(x_pos, 1.3, "stuff", fontsize=8, ha='center', va='center', color='red', rotation=90)
                     ax.axvspan(x_pos - 10, x_pos + 10, facecolor='red', alpha=0.1)
                     count = 0
