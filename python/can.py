@@ -74,7 +74,11 @@ class CANPlotter:
                 i += 1
 
     def bits_to_hex(self, bits):
-        return hex(int(bits, 2))
+        if bits:
+            return hex(int(bits, 2))
+        else:
+            return '0x0' 
+
 
     def update(self, frame):
         print("Running")
@@ -156,10 +160,10 @@ class CANPlotter:
                     
                     x = idx * 20      
                     self.ax.axvline(x, color='black', linestyle='-', linewidth=1)
-                    self.ax.text(x + 12, -0.4, label, rotation=90, fontsize=8, ha='center', va='bottom', color='black')
+                    self.ax.text(x + 12, -0.3, label, rotation=90, fontsize=10, ha='center', va='bottom', color='black')
                     
                     if self.current_bits != '':
-                        self.ax.text(x + 12, -0.4, self.bits_to_hex(''.join(str(b) for b in self.current_bits)), rotation=90, fontsize=8, ha='center', va='bottom', color='black')
+                        self.ax.text(x + 12, -0.4, self.bits_to_hex(''.join(str(b) for b in self.current_bits)), rotation=90, fontsize=10, ha='center', va='bottom', color='black')
                     
                     self.current_bits.clear()
 
