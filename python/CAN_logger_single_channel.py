@@ -5,15 +5,15 @@ import matplotlib.pyplot as plt
 
 PORT = 'COM6'         
 BAUD = 1152000        
-MAX_BITS = 5000
+MAX_BITS = 2500
 
 
 state_data = []
 timestamp_data = []
 
+offset = 8
 total_time = 0
-current_bit_state_percentage = [0, 0]
-current_bit_index = 0
+last_time = 0
 bit_data = []
 bit_duration = 20  
 
@@ -22,7 +22,7 @@ done = False
 ser = serial.Serial(PORT, BAUD, timeout=1)
 
 def decode_8byte_aligned(data: bytes):
-    global state_data, timestamp_data, total_time, current_bit_state_percentage, current_bit_index, bit_data, bit_duration
+    global state_data, timestamp_data, total_time, bit_data, bit_duration, last_time
       
     i = 0
 
@@ -60,36 +60,14 @@ def decode_8byte_aligned(data: bytes):
                 timestamp_data.append(timestamp)
             timestamp_data.append(timestamp)
 
-            if current_bit_index > 40:
-                bit_duration = 20.1
+            duration = timestamp - last_time
 
-            while current_bit_index * bit_duration <= timestamp:
-                if (current_bit_index + 1) * bit_duration <= timestamp: 
-                    if current_bit_state_percentage != [0,0]:
-                        current_bit_state_percentage[1 - state] = (current_bit_index + 1) * bit_duration - total_time                     
-                        if current_bit_state_percentage[0] > 10:
-                            bit_data.append(0)
-                        elif current_bit_state_percentage[0] == 10:
-                            if len(bit_data) > 4 and sum(bit_data[-5:]) == 0:
-                                bit_data.append(1)
-                            else:
-                                bit_data.append(0)
-                        elif current_bit_state_percentage[1] == 10:
-                            if len(bit_data) > 4 and sum(bit_data[-5:]) == 5:
-                                bit_data.append(0)
-                            else:
-                                bit_data.append(1)
-                        else:
-                            bit_data.append(1)
-                    else:
-                        bit_data.append(1 - state)
-                    current_bit_state_percentage = [0, 0]
-                    current_bit_index += 1
-                else:
-                    current_bit_state_percentage[1 - state] = timestamp - current_bit_index * bit_duration  
-                    break
+            while duration > offset:
+                bit_data.append(1 - state)
+                duration -= bit_duration
+                pass
 
-            total_time = timestamp
+            last_time = timestamp
             
             i += 8
         else:
@@ -103,7 +81,7 @@ def update(frame):
     if done:
         return
 
-    data = ser.read(120)
+    data = ser.read(128)
     if data:
         print(data)
         ax.clear()
