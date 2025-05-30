@@ -10,6 +10,7 @@ class CANPlotter:
         self.state_data = []
         self.timestamp_data = []
         self.bit_data = []
+        self.current_bits = []
 
         self.offset = 8
         self.total_time = 0
@@ -72,10 +73,13 @@ class CANPlotter:
             else:
                 i += 1
 
+    def bits_to_hex(self, bits):
+        return hex(int(bits, 2))
+
     def update(self, frame):
-        print("[UPDATE] Running")
+        print("Running")
         
-        data = self.ser.read(120)
+        data = self.ser.read_all()
         if data:
             print(data)
             self.ax.clear()
@@ -99,16 +103,24 @@ class CANPlotter:
                 98: "DEL",
                 99: "ACK",
                 100: "DEL",
-                107: "EOF"
+                101: "EOF",
+                108: "IFS"
             }
 
             stuff_bit_count = 0
             count = 0
             last_bit = -1
             actual_idx = 0
+            plotting_lim = 0
+
+            print(len(self.bit_data))
+            if len(self.bit_data) < 125:
+                plotting_lim = 2500
+            else:
+                plotting_lim = (len(self.bit_data) * 20) + 250
 
             self.ax.set_ylim(-0.5, 1.5)
-            self.ax.set_xlim(0, (len(self.bit_data) * 20) + 1000)
+            self.ax.set_xlim(0, plotting_lim)
             self.ax.set_xlabel('Time (ticks)')
             self.ax.set_ylabel('Logic Level')
             self.ax.set_title('Live CAN Frame')
@@ -116,13 +128,7 @@ class CANPlotter:
 
             self.decode_8byte_aligned(data)
 
-            x = self.timestamp_data
-            y = self.state_data
-
-            if len(x) != 0:
-                self.ax.step(x, y, where='post', color='blue', linewidth=1.5)
-
-            for i in range(0, (len(self.bit_data) * 20) + 1000, 20):
+            for i in range(0, plotting_lim, 20):
                 self.ax.axvline(i, color='gray', linestyle='--', linewidth=0.5)
 
             for idx, bit in enumerate(self.bit_data):
@@ -146,17 +152,35 @@ class CANPlotter:
 
                 if actual_idx in frame_labels:
                     label = frame_labels[actual_idx]
+                    
+                    
                     x = idx * 20      
                     self.ax.axvline(x, color='black', linestyle='-', linewidth=1)
                     self.ax.text(x + 12, -0.4, label, rotation=90, fontsize=8, ha='center', va='bottom', color='black')
+                    
+                    if self.current_bits != '':
+                        self.ax.text(x + 12, -0.4, self.bits_to_hex(''.join(str(b) for b in self.current_bits)), rotation=90, fontsize=8, ha='center', va='bottom', color='black')
+                    
+                    self.current_bits.clear()
+
+                    if label in("EOF","IFS"):
+                        count = 0
+                    
+                    if label == "IFS":
+                        actual_idx = -3
+
+                    if label == "CRC":
+                        if len(self.bit_data) - idx <= 30:
+                            self.bit_data.extend([1]*14)
+                            self.state_data.append(1)
+                            self.timestamp_data.append(self.timestamp_data[-1] + 14 * 20)
 
                 last_bit = bit
+                self.current_bits.append(bit)
                 actual_idx += 1
 
-            
+            x = self.timestamp_data
+            y = self.state_data
 
-                # self.ax.figure.canvas.draw_idle()
-                # self.canvas.draw_idle()
-                # self.canvas.get_tk_widget().update_idletasks()
-
-     
+            if len(x) != 0:
+                self.ax.step(x, y, where='post', color='blue', linewidth=1.5)

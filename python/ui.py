@@ -35,7 +35,7 @@ class LogicAnalyzerApp(tk.Tk):
         self.port_combo.pack(side=tk.LEFT)
 
         # Eefresh button
-        ttk.Button(top_frame, text="⟳ Refresh", command=self.update_serial_ports).pack(side=tk.LEFT, padx=5)
+        ttk.Button(top_frame, text="⟳ Refresh", command=self.update_serial_ports).pack(side=tk.LEFT, padx=10, ipady=5)
 
         # Start/Stop/Reset
         ttk.Button(top_frame, text="Start", command=self.start, width=20).pack(side=tk.LEFT, padx=10, ipady=5)
@@ -68,6 +68,8 @@ class LogicAnalyzerApp(tk.Tk):
             self.port_combo.set("No Ports")
 
     def start(self):
+        
+        #check if port selected
         selected_port = self.port_combo.get()
         if "No Ports" in selected_port or not selected_port:
             print("No valid port selected.")
@@ -77,7 +79,6 @@ class LogicAnalyzerApp(tk.Tk):
             self.plotter.start(selected_port, baudrate=1152000)
             self.anim = FuncAnimation(self.figure, self.plotter.update, interval=100, blit=False)
 
-            # Important: ensure the animation object stays alive
             self.canvas.draw()
             self.canvas.get_tk_widget().update_idletasks()
 
