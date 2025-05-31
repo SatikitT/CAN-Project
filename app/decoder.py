@@ -1,0 +1,177 @@
+import struct
+
+class CANDecoder:
+    def __init__(self, bit_duration=20, offset=8):
+        self.bit_data = []
+        self.timestamp_data = []
+        self.state_data = []
+        self.bit_duration = bit_duration
+        self.offset = offset
+        self.last_time = 0
+
+    def get_plot_data(self):
+        return self.state_data, self.timestamp_data
+
+    def reset_data(self):
+        self.state_data.clear()
+        self.timestamp_data.clear()
+        self.bit_data.clear()
+        self.total_time = 0
+        self.last_time = 0
+
+    def decode_8byte_data(self, raw_data):
+        i = 0
+
+        while i < len(raw_data):
+
+            if raw_data[i:i+3] == b'\x11\x00\x01' or raw_data[i:i+3] == b'\x11\x01\x01':
+                record = raw_data[i:i+8]
+                if len(record) < 8:
+                    continue
+
+                state = record[1]
+                if len(self.state_data) > 1 and state == self.state_data[-1]:
+                    i += 8
+                    continue
+
+                timestamp = struct.unpack("<I", record[4:8])[0]
+            
+                #Debugging output
+                #print(f"{current_bit_index} Rec: {record[0:4]}          {record[4:8]}           Lev: {state}    Dur: {timestamp}")
+                
+                if len(self.timestamp_data) > 0 and timestamp < self.timestamp_data[-1]:
+                    self.reset_data()
+
+                if len(self.state_data) >= 1:
+                    self.state_data.append(self.state_data[-1])
+                    self.timestamp_data.append(timestamp)
+                    
+                self.state_data.append(state)
+                self.timestamp_data.append(timestamp)
+
+                duration = timestamp - self.last_time
+
+                while duration > self.offset:
+                    self.bit_data.append(1 - state)
+                    duration -= self.bit_duration
+                    pass
+
+                self.last_time = timestamp
+                
+                i += 8
+            else:
+                i += 1
+
+    def decode_frame_type(self, bits):
+        frame_info = {}
+        print("before", bits)
+        # SOF is bit 0
+        frame_info['SOF'] = bits[0]
+
+        # IDE (bit 13) and RTR (bit 12 for standard)
+        ide_bit = bits[13]
+        rtr_bit = bits[12]
+
+        current_idx = 1  # after SOF
+
+        if ide_bit == 0:
+            # Standard Frame (11-bit ID)
+            frame_info['FrameType'] = 'Standard'
+            frame_info['ID'] = bits[current_idx:current_idx+11]
+            current_idx += 11
+            frame_info['RTR'] = bits[current_idx]
+            current_idx += 1
+            frame_info['IDE'] = bits[current_idx]
+            current_idx += 1
+            frame_info['r0'] = bits[current_idx]
+            current_idx += 1
+
+        else:
+            # Extended Frame (29-bit ID)
+            frame_info['FrameType'] = 'Extended'
+            frame_info['BASE ID'] = bits[current_idx:current_idx+11]
+            current_idx += 11
+            frame_info['SRR'] = bits[current_idx]
+            current_idx += 1
+            frame_info['IDE'] = bits[current_idx]
+            current_idx += 1
+            frame_info['EXT ID'] = bits[current_idx:current_idx+18]
+            current_idx += 18
+            frame_info['RTR'] = bits[current_idx]
+            rtr_bit = bits[current_idx]
+            current_idx += 1
+            frame_info['r0'] = bits[current_idx]
+            current_idx += 1
+            frame_info['r1'] = bits[current_idx]
+            current_idx += 1
+
+        # DLC (always next 4 bits)
+        frame_info['DLC'] = bits[current_idx:current_idx+4]
+        current_idx += 4
+
+        dlc_value = int(''.join(str(b) for b in frame_info['DLC']), 2)
+        
+        # Check for Remote Frame
+        if rtr_bit == 1:
+            frame_info['FrameSubtype'] = 'Remote'
+            # frame_info['Data'] = []
+        else:
+            frame_info['FrameSubtype'] = 'Data'
+            # Read data bytes (8 bits per byte)
+            frame_info['Data'] = bits[current_idx:current_idx+(dlc_value*8)]
+            current_idx += dlc_value*8
+
+        while len(bits[current_idx:current_idx+15]) < 15:
+            bits.append(1)
+        # CRC (next 15 bits after data)
+        frame_info['CRC'] = bits[current_idx:current_idx+15]
+        current_idx += 15
+
+        while current_idx >= len(bits):
+            bits.append(1)
+            
+        frame_info['CRC_DEL'] = bits[current_idx]
+
+        while current_idx+1 >= len(bits):
+            bits.append(1)
+            
+        frame_info['ACK'] = bits[current_idx+1]
+
+        while current_idx+2 >= len(bits):
+            bits.append(1)
+            
+        frame_info['ACK_DEL'] = bits[current_idx+2]
+
+        while current_idx+10 >= len(bits):
+            bits.append(1)
+        
+        frame_info['EOF'] = bits[current_idx+3:current_idx+10]
+
+        print("after", bits)
+        return frame_info
+    
+    def remove_stuff_bits(self, bitstream):
+        un_stf_bits = [bitstream[0]]
+        stf_bit_pos = []
+
+        last_bit = bitstream[0]
+        cnt = 1
+        bit_cnt = 0
+
+        for bit in bitstream[1:]:
+            bit_cnt += 1
+            if bit == last_bit:
+                cnt += 1
+                un_stf_bits.append(bit)
+            else:
+                if cnt == 5:
+                    cnt = 0
+                    # add stuff bit position to list
+                    stf_bit_pos.append(bit_cnt)
+                else:
+                    cnt = 1
+                    un_stf_bits.append(bit)
+
+            last_bit = bit
+
+        return un_stf_bits, stf_bit_pos
