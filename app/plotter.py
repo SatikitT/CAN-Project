@@ -1,7 +1,7 @@
 from decoder import CANDecoder
 from serial_reader import SerialReader
 
-class CANPlotter:
+class Plotter:
 
     def __init__(self):
 

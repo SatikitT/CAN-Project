@@ -11,7 +11,7 @@ import serial.tools.list_ports
 
 import threading
 
-from plotter import CANPlotter
+from plotter import Plotter
 
 READ_INTERVAL = 100
 
@@ -33,7 +33,7 @@ class LogicAnalyzerApp(tk.Tk):
         self.get_serial_ports()
         self.update_serial_ports()
 
-        self.plotter = CANPlotter()
+        self.plotter = Plotter()
         self.plotter.ax = self.ax        
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
