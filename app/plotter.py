@@ -51,7 +51,6 @@ class Plotter:
         for time_index in range(0, len(timestamp_data)-1,2):
             t1 = timestamp_data[time_index]
             t2 = timestamp_data[time_index + 1] 
-            self.ax.axvline(t1 + 80, color='blue', linestyle='-', linewidth=0.5)
             time_diff = t2 - t1
             bit_count = 0
 
@@ -64,8 +63,9 @@ class Plotter:
             for i in np.arange(t1, t2, (t2 - t1) / bit_count):
                 actual_bit_timestamp.append(i)
                 actual_bit_timestamp.append(i + (t2 - t1) / bit_count)
-                self.ax.axvline(i + 80, color='blue', linestyle='-', linewidth=0.5)
-            
+
+        actual_bit_timestamp[0] = 0
+
         return actual_bit_timestamp
 
     def setup_graph(self, data):
@@ -74,7 +74,7 @@ class Plotter:
         self.ax.set_ylim(-0.5, 1.5)
         self.ax.set_xlabel('Time (ticks)')
         self.ax.set_ylabel('Logic Level')
-        self.ax.grid(True)
+        self.ax.grid(True, axis='y')
 
         plotting_lim = (len(data) * 20) + 500
 
@@ -87,14 +87,29 @@ class Plotter:
         # for i in range(0, plotting_lim, 20):
         #     self.ax.axvline(i, color='gray', linestyle='--', linewidth=0.5)
 
+    def get_pos(self, bit_cnt, offset_bits=4):
+        pos = 0
+        act_bit_mins_4 = bit_cnt - offset_bits
+        if bit_cnt > 3 and (bit_cnt - offset_bits) * 2 < len(self.plot_timestamp):
+            time_diff = self.plot_timestamp[act_bit_mins_4 * 2 + 1] - self.plot_timestamp[act_bit_mins_4 * 2]
+            pos = self.plot_timestamp[act_bit_mins_4 * 2] + time_diff / 2 + 80
+        elif (bit_cnt - offset_bits) * 2 >= len(self.plot_timestamp):
+            cnt_from_last = bit_cnt - len(self.plot_timestamp) // 2
+            pos = self.plot_timestamp[-1] + cnt_from_last * 20 + 10
+        else:
+            pos = bit_cnt * 20 + 10 
+        
+        return pos
+
     def draw_frame(self, bit_data, frames, stuff_bit_pos):
 
         actual_bit_cnt = 0
         offset_bits = 4
 
         for frame_info in frames:
+            
+            x_pos = self.get_pos(actual_bit_cnt, offset_bits) 
 
-            x_pos = actual_bit_cnt * 20 + 10 
             frame_type_label = f"Frame type: {frame_info['FrameType']} {frame_info['FrameSubtype']} Frame"
             self.ax.text(x_pos, 1.02, frame_type_label,
                         fontsize=12, fontweight='bold', verticalalignment='bottom',
@@ -111,7 +126,7 @@ class Plotter:
                 if type(bits) == int:
                     bits = [bits]
 
-                x_pos = actual_bit_cnt * 20 + 10
+                x_pos = self.get_pos(actual_bit_cnt, offset_bits) 
 
                 if self.app.bit_chkbox.get():
                     # draw part name
@@ -127,7 +142,7 @@ class Plotter:
                 for bit in bits:
 
                     if actual_bit_cnt - offset_bits in stuff_bit_pos:
-                        x_pos = actual_bit_cnt * 20 + 10
+                        x_pos = self.get_pos(actual_bit_cnt, offset_bits) 
                         
                         if self.app.text_chkbox.get():
                             # draw stuff text
@@ -135,14 +150,17 @@ class Plotter:
                         
                         if self.app.bit_chkbox.get():
                             # draw stuff bit 
-                            self.ax.text(x_pos,  -0.37, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
+                            self.ax.text(x_pos, -0.37, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
                         
                         if self.app.hili_chkbox.get():
-                            # draw red plane
-                            self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor='#ff6961', alpha=0.5)
+                            act_bit_mins_4 = actual_bit_cnt - offset_bits
+                            t1 = self.plot_timestamp[act_bit_mins_4 * 2] + 80
+                            t2 = self.plot_timestamp[act_bit_mins_4 * 2 + 1] + 80
+                            self.ax.axvspan(t1, t2, facecolor='#ff6961', alpha=0.5)
+                            self.ax.axvline(t2, color='grey', linestyle='-', linewidth=0.5)
                         actual_bit_cnt += 1
                     
-                    x_pos = actual_bit_cnt * 20 + 10
+                    x_pos = self.get_pos(actual_bit_cnt, offset_bits)
 
                     if self.app.bit_chkbox.get():
                         # draw bit 
@@ -150,12 +168,15 @@ class Plotter:
                     
                     if part in self.frame_color.keys() and self.app.hili_chkbox.get():
                         # draw colored plane
-                        if actual_bit_cnt * 2 < len(self.plot_timestamp):
-                            t1 = self.plot_timestamp[actual_bit_cnt]
-                            t2 = self.plot_timestamp[actual_bit_cnt + 1]
+                        act_bit_mins_4 = actual_bit_cnt - offset_bits
+                        if actual_bit_cnt > 3 and act_bit_mins_4 * 2 < len(self.plot_timestamp):
+                            t1 = self.plot_timestamp[act_bit_mins_4 * 2] + 80
+                            t2 = self.plot_timestamp[act_bit_mins_4 * 2 + 1] + 80
                             self.ax.axvspan(t1, t2, facecolor=self.frame_color[part], alpha=0.5)
+                            self.ax.axvline(t2, color='grey', linestyle='-', linewidth=0.5)
                         else:
                             self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=self.frame_color[part], alpha=0.5)
+                            self.ax.axvline(x_pos + 10, color='grey', linestyle='-', linewidth=0.5)
 
                     actual_bit_cnt += 1
 
@@ -165,7 +186,7 @@ class Plotter:
         y = [0, offset_bits * idle_duration] + [yi + offset_bits * idle_duration for yi in y]
         x = [1,1] + x
 
-        self.ax.step(y, x, where='post', color='blue', linewidth=1.5)
+        self.ax.step(y, x, where='post', color='blue', linewidth=2)
 
     def update(self, frame):
         data = self.reader.read_data()
