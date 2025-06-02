@@ -64,8 +64,9 @@ class CANDecoder:
 
     def decode_frame_type(self, bits):
         frame_info = {}
-        print("before", bits)
+
         # SOF is bit 0
+
         frame_info['SOF'] = bits[0]
 
         # IDE (bit 13) and RTR (bit 12 for standard)
@@ -147,7 +148,6 @@ class CANDecoder:
         
         frame_info['EOF'] = bits[current_idx+3:current_idx+10]
 
-        print("after", bits)
         return frame_info
     
     def remove_stuff_bits(self, bitstream):

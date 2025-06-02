@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
 
+from PIL import Image, ImageTk
+
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -21,40 +23,61 @@ class LogicAnalyzerApp(tk.Tk):
         self.title("Logic Analyzer")
         self.geometry("1600x900")
 
+        style = ttk.Style(self)
+        style.configure('TCheckbutton', font = 11)
+
         # self.state('zoomed')
         self.configure(bg="white")
-        self.canvas = None 
 
         self.stop_event   = threading.Event()
         self.serial_thr   = None
+        
+        self.after_id = None
 
+        self.load_image()
         self.create_top_panel()
         self.create_plot_area()
         self.get_serial_ports()
         self.update_serial_ports()
 
-        self.plotter = Plotter()
+        self.plotter = Plotter(self)
         self.plotter.ax = self.ax        
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
+    def load_image(self):
+        self.refresh_icon = ImageTk.PhotoImage(Image.open("app/icons/refresh.png").resize((36, 36)))
+        self.start_icon   = ImageTk.PhotoImage(Image.open("app/icons/start.png").resize((24, 24)))
+        self.stop_icon    = ImageTk.PhotoImage(Image.open("app/icons/pause.png").resize((24, 24)))
+        self.reset_icon   = ImageTk.PhotoImage(Image.open("app/icons/record.png").resize((24, 24)))
+
     def create_top_panel(self):
-        top_frame = tk.Frame(self, bg="black", height=100)
+        top_frame = tk.Frame(self, bg="lightgrey", height=100)
         top_frame.pack(fill=tk.X)
         top_frame.pack_propagate(False)
 
         # Port
-        tk.Label(top_frame, text="Port", fg="white", bg="black", font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Label(top_frame, text="Port", bg="lightgrey", font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
         self.port_combo = ttk.Combobox(top_frame, values=[], width=20)
         self.port_combo.pack(side=tk.LEFT)
 
-        # Eefresh button
-        ttk.Button(top_frame, text="⟳ Refresh", command=self.update_serial_ports).pack(side=tk.LEFT, padx=10, ipady=5)
+        tk.Button(top_frame, image=self.refresh_icon, bg="lightgrey", bd=0, command=self.update_serial_ports).pack(side=tk.LEFT, padx=10)
 
-        # Start/Stop/Reset
-        ttk.Button(top_frame, text="Start", command=self.start, width=20).pack(side=tk.LEFT, padx=10, ipady=5)
-        ttk.Button(top_frame, text="Stop", command=self.stop, width=20).pack(side=tk.LEFT, padx=10, ipady=5)
-        ttk.Button(top_frame, text="Reset", command=self.reset, width=20).pack(side=tk.LEFT, padx=10, ipady=5)
+        tk.Button(top_frame, image=self.start_icon, bg="lightgrey", bd=0, command=self.start).pack(side=tk.LEFT, padx=10)
+        tk.Button(top_frame, image=self.stop_icon, bg="lightgrey", bd=0, command=self.stop).pack(side=tk.LEFT, padx=10)
+        tk.Button(top_frame, image=self.reset_icon, bg="lightgrey", bd=0, command=self.reset).pack(side=tk.LEFT, padx=10)
+
+        tk.Label(top_frame, text="Display:", bg="lightgrey", font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
+
+        self.bit_chkbox = tk.BooleanVar()
+        self.hex_chkbox = tk.BooleanVar()
+        self.hili_chkbox = tk.BooleanVar()
+        self.text_chkbox = tk.BooleanVar()
+
+        tk.Checkbutton(top_frame, text="bits", bg="lightgrey", font=("Segoe UI", 20), variable=self.bit_chkbox).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Checkbutton(top_frame, text="hex", bg="lightgrey", font=("Segoe UI", 20), variable=self.hex_chkbox).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Checkbutton(top_frame, text="hightlight", bg="lightgrey", font=("Segoe UI", 20), variable=self.hili_chkbox).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Checkbutton(top_frame, text="text", bg="lightgrey", font=("Segoe UI", 20), variable=self.text_chkbox).pack(side=tk.LEFT, padx=(20, 5))
 
     def create_plot_area(self):
         self.figure, self.ax = plt.subplots(figsize=(10, 5))
@@ -114,12 +137,21 @@ class LogicAnalyzerApp(tk.Tk):
     def periodic_update(self):
         self.plotter.update(None)
         self.canvas.draw()
-        self.after(READ_INTERVAL, self.periodic_update)
+
+        # Reschedule only if not stopping
+        if not self.stop_event.is_set():
+            self.after_id = self.after(READ_INTERVAL, self.periodic_update)
+
 
     def stop(self):
-        if hasattr(self, 'anim'):
-            self.anim.event_source.stop()
-        print("Stopped")
+        self.stop_event.set()
+
+        # Cancel the after loop
+        if self.after_id:
+            self.after_cancel(self.after_id)
+            self.after_id = None
+        print("Stop clicked")
+
 
     def reset(self):
         print("Reset clicked")

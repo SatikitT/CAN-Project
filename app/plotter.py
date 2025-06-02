@@ -1,28 +1,38 @@
 from decoder import CANDecoder
 from serial_reader import SerialReader
+import time
 
 class Plotter:
 
-    def __init__(self):
+    def __init__(self, app):
 
         self.decoder = CANDecoder()
         self.reader = None
         self.ax = None
+        self.app = app
 
         self.font_size = 10
         self.font_color = 'black'
 
-        self.frame_color = {"IDLE":"45c0de", 
-                            "SOF":"b1b6ba",
-                            "ID":"92c255",
-                            "BASE ID":"92c255",
-                            "EXT ID":"92c255",
-                            "DLC":"00a765",
-                            "Data":"028fc3",
-                            "CRC":"b70032",
-                            "ACK":"fbb900",
-                            "EOF":"ef7c00",
-                            "IFS":"dadee1"}
+        self.frame_color = {"IDLE":"#45c0de", 
+                            "IDLE ":"#45c0de",
+                            "SOF":"#b1b6ba",
+                            "ID":"#92c255",
+                            "RTR":"#49b45d",
+                            "r0":"#49b45d",
+                            "r1":"#49b45d",
+                            "SRR":"#49b45d",
+                            "IDE":"#49b45d",
+                            "BASE ID":"#92c255",
+                            "EXT ID":"#92c255",
+                            "DLC":"#00a765",
+                            "Data":"#028fc3",
+                            "CRC":"#b70032",
+                            "CRC_DEL":"#b70032",
+                            "ACK":"#fbb900",
+                            "ACK_DEL":"#fbb900",
+                            "EOF":"#ef7c00",
+                            "IFS":"#dadee1"}
 
     def start(self, port, baudrate):
         self.reader = SerialReader(port, baudrate)
@@ -57,20 +67,9 @@ class Plotter:
                     horizontalalignment='left', color='green')
         
         actual_bit_cnt = 0
+        offset_bits = 4
 
-        # Add 5 idle bits (logical 1) for visualization
-        idle_bits = [1] * 5
-
-        # draw IDLE text
-        self.ax.text(10, -0.49, 'IDLE', fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
-
-        for i, bit in enumerate(idle_bits):
-            x_pos = i * 20 + 10
-            self.ax.text(x_pos, -0.4, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color, rotation=90)
-            self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=f'#{self.frame_color["IDLE"]}', alpha=0.5)
-
-        # Shift bit drawing forward to account for 5 idle bits
-        offset_bits = 5
+        frame_info = {'IDLE': [1] * offset_bits, **frame_info, 'IDLE ': [1] * offset_bits}
 
         for part, bits in frame_info.items():
             
@@ -80,34 +79,46 @@ class Plotter:
             if type(bits) == int:
                 bits = [bits]
 
-            x_pos = (actual_bit_cnt + offset_bits) * 20 + 10
-            # draw part name
-            self.ax.text(x_pos,  -0.49, part, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
+            x_pos = actual_bit_cnt * 20 + 10
+
+            if self.app.bit_chkbox.get():
+                # draw part name
+                self.ax.text(x_pos,  -0.49, part, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
 
             bit_text = ''.join(str(b) for b in bits)
             bit_decoded = self.bits_to_hex(bit_text)
             
-            # draw hex data of each part
-            self.ax.text(x_pos,  -0.3, bit_decoded, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
+            if self.app.hex_chkbox.get():
+                # draw hex data of each part
+                self.ax.text(x_pos,  -0.3, bit_decoded, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
             
             for bit in bits:
 
-                if actual_bit_cnt in stuff_bit_pos:
-                    x_pos = (actual_bit_cnt + offset_bits) * 20 + 10
-                    # draw stuff text
-                    self.ax.text(x_pos,  -0.49, 'stuff', fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
-                    # draw stuff bit 
-                    self.ax.text(x_pos,  -0.4, bit_data[actual_bit_cnt], fontsize=self.font_size, ha='center', va='center', color=self.font_color, rotation=90)
-                    # draw red plane
-                    self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor='red', alpha=0.1)
+                if actual_bit_cnt - offset_bits in stuff_bit_pos:
+                    x_pos = actual_bit_cnt * 20 + 10
+                    
+                    if self.app.text_chkbox.get():
+                        # draw stuff text
+                        self.ax.text(x_pos,  -0.49, 'stuff', fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
+                    
+                    if self.app.bit_chkbox.get():
+                        # draw stuff bit 
+                        self.ax.text(x_pos,  -0.37, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
+                    
+                    if self.app.hili_chkbox.get():
+                        # draw red plane
+                        self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor='#ff6961', alpha=0.5)
                     actual_bit_cnt += 1
                 
-                x_pos = (actual_bit_cnt + offset_bits) * 20 + 10
-                # draw bit 
-                self.ax.text(x_pos,  -0.4, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color, rotation=90)
+                x_pos = actual_bit_cnt * 20 + 10
+
+                if self.app.bit_chkbox.get():
+                    # draw bit 
+                    self.ax.text(x_pos,  -0.37, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color)
                 
-                if part in self.frame_color.keys():
-                        self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=f'#{self.frame_color[part]}', alpha=0.5)
+                if part in self.frame_color.keys() and self.app.hili_chkbox.get():
+                    # draw colored plane
+                    self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=self.frame_color[part], alpha=0.5)
 
                 actual_bit_cnt += 1
 
@@ -115,7 +126,7 @@ class Plotter:
 
         # Insert 5 idle steps (assuming bit duration is 20 ticks)
         idle_duration = 20
-        y = [0, 100] + [yi + 5 * idle_duration for yi in y]
+        y = [0, offset_bits * idle_duration] + [yi + offset_bits * idle_duration for yi in y]
         x = [1,1] + x
 
         self.ax.step(y, x, where='post', color='blue', linewidth=1.5)
