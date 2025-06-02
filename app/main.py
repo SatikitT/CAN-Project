@@ -65,7 +65,7 @@ class LogicAnalyzerApp(tk.Tk):
 
         tk.Button(top_frame, image=self.start_icon, bg="lightgrey", bd=0, command=self.start).pack(side=tk.LEFT, padx=10)
         tk.Button(top_frame, image=self.stop_icon, bg="lightgrey", bd=0, command=self.stop).pack(side=tk.LEFT, padx=10)
-        tk.Button(top_frame, image=self.reset_icon, bg="lightgrey", bd=0, command=self.reset).pack(side=tk.LEFT, padx=10)
+        # tk.Button(top_frame, image=self.reset_icon, bg="lightgrey", bd=0, command=self.reset).pack(side=tk.LEFT, padx=10)
 
         tk.Label(top_frame, text="Display:", bg="lightgrey", font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
 
@@ -114,7 +114,11 @@ class LogicAnalyzerApp(tk.Tk):
             return
 
         try:
-            # self.plotter.start(selected_port, baudrate=1152000)
+            
+            if self.plotter.reader and self.plotter.reader.ser:
+                if self.plotter.reader.ser.is_open and self.plotter.reader.ser.port == selected_port:
+                    print(f"Already connected to {selected_port}")
+                    return
 
             self.serial_thr = threading.Thread(
                 target=self.plotter.start,
@@ -142,16 +146,15 @@ class LogicAnalyzerApp(tk.Tk):
         if not self.stop_event.is_set():
             self.after_id = self.after(READ_INTERVAL, self.periodic_update)
 
-
     def stop(self):
         self.stop_event.set()
-
+        self.plotter.reader.disconnect()
+        
         # Cancel the after loop
         if self.after_id:
             self.after_cancel(self.after_id)
             self.after_id = None
         print("Stop clicked")
-
 
     def reset(self):
         print("Reset clicked")

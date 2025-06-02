@@ -12,3 +12,10 @@ class SerialReader:
                 return self.ser.read(1024)  # potentially blocking
         return b''
 
+    def disconnect(self):
+        if self.ser and self.ser.is_open:
+            try:
+                self.ser.close()
+                print("Serial port disconnected.")
+            except Exception as e:
+                print(f"Error closing port: {e}")

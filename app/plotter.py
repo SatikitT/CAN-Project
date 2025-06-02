@@ -124,7 +124,6 @@ class Plotter:
 
         x, y = self.decoder.get_plot_data()
 
-        # Insert 5 idle steps (assuming bit duration is 20 ticks)
         idle_duration = 20
         y = [0, offset_bits * idle_duration] + [yi + offset_bits * idle_duration for yi in y]
         x = [1,1] + x
