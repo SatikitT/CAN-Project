@@ -32,7 +32,7 @@ class Plotter:
                             "ACK":"#fbb900",
                             "ACK_DEL":"#fbb900",
                             "EOF":"#ef7c00",
-                            "IFS":"#dadee1"}
+                            "IFS":"#757575"}
 
     def start(self, port, baudrate):
         self.reader = SerialReader(port, baudrate)
@@ -66,11 +66,12 @@ class Plotter:
 
         for frame_info in frames:
 
+            x_pos = actual_bit_cnt * 20 + 10 
             frame_type_label = f"Frame type: {frame_info['FrameType']} {frame_info['FrameSubtype']} Frame"
-            self.ax.text(0, 1.02, frame_type_label, transform=self.ax.transAxes,
+            self.ax.text(x_pos, 1.02, frame_type_label,
                         fontsize=12, fontweight='bold', verticalalignment='bottom',
-                        horizontalalignment='left', color='green')
-
+                        horizontalalignment='left', color='black')
+            
             if actual_bit_cnt == 0:
                 frame_info = {'IDLE': [1] * offset_bits, **frame_info}
 
@@ -135,14 +136,16 @@ class Plotter:
 
     def update(self, frame):
         data = self.reader.read_data()
+
         if data:
+            print(data)
             self.decoder.decode_8byte_data(data)
+            print(self.decoder.bit_data)
+            if not self.decoder.bit_data:
+                return
+            
             self.setup_graph(self.decoder.bit_data)
             bits, stuff_pos = self.decoder.remove_stuff_bits(self.decoder.bit_data)
             frames = self.decoder.decode_frame_type(bits)
             self.draw_frame(self.decoder.bit_data, frames, stuff_pos)
-
-            for b in range(len(self.decoder.bit_data)):
-                x_pos = (b+4) * 20 + 10
-                self.ax.text(x_pos,  -0.39, str(self.decoder.bit_data[b]), fontsize=self.font_size, ha='center', va='center', color=self.font_color)
                     

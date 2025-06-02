@@ -37,7 +37,7 @@ class CANDecoder:
                 timestamp = struct.unpack("<I", record[4:8])[0]
             
                 #Debugging output
-                #print(f"{current_bit_index} Rec: {record[0:4]}          {record[4:8]}           Lev: {state}    Dur: {timestamp}")
+                print(f"Rec: {record[0:4]}          {record[4:8]}           Lev: {state}    Dur: {timestamp}")
                 
                 if len(self.timestamp_data) > 0 and timestamp < self.timestamp_data[-1]:
                     self.reset_data()
@@ -151,7 +151,7 @@ class CANDecoder:
                 
                 frame_info['EOF'] = bits[current_idx+3:current_idx+10]
                 current_idx += 10  # Move past EOF
-                
+
                 while current_idx+3 >= len(bits):
                     bits.append(1)
                 
@@ -160,6 +160,9 @@ class CANDecoder:
 
                 frames.append(frame_info)
                 
+
+                print(f"Current idx {current_idx} len {len(bits)}")
+            
             except Exception as e:
                 print(f"Error decoding frame: {e}")
                 break
