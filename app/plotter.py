@@ -1,5 +1,6 @@
 from decoder import CANDecoder
 from serial_reader import SerialReader
+import numpy as np
 import time
 
 class Plotter:
@@ -13,6 +14,8 @@ class Plotter:
 
         self.font_size = 10
         self.font_color = 'black'
+
+        self.plot_timestamp = []
 
         self.frame_color = {"IDLE":"#45c0de", 
                             "IDLE ":"#45c0de",
@@ -43,6 +46,28 @@ class Plotter:
         else:
             return '0x0' 
     
+    def retrive_bit_timestamp(self, timestamp_data):
+        actual_bit_timestamp = []
+        for time_index in range(0, len(timestamp_data)-1,2):
+            t1 = timestamp_data[time_index]
+            t2 = timestamp_data[time_index + 1] 
+            self.ax.axvline(t1 + 80, color='blue', linestyle='-', linewidth=0.5)
+            time_diff = t2 - t1
+            bit_count = 0
+
+            while time_diff > 20:
+                bit_count += 1
+                time_diff -= 20
+            if time_diff > 8:
+                bit_count += 1
+
+            for i in np.arange(t1, t2, (t2 - t1) / bit_count):
+                actual_bit_timestamp.append(i)
+                actual_bit_timestamp.append(i + (t2 - t1) / bit_count)
+                self.ax.axvline(i + 80, color='blue', linestyle='-', linewidth=0.5)
+            
+        return actual_bit_timestamp
+
     def setup_graph(self, data):
 
         self.ax.clear()
@@ -54,10 +79,13 @@ class Plotter:
         plotting_lim = (len(data) * 20) + 500
 
         self.ax.set_xlim(0, plotting_lim)
+        
+        self.plot_timestamp = self.retrive_bit_timestamp(self.decoder.timestamp_data)
 
-        # draw dot line
-        for i in range(0, plotting_lim, 20):
-            self.ax.axvline(i, color='gray', linestyle='--', linewidth=0.5)
+        print(self.plot_timestamp)
+        # # draw dot line
+        # for i in range(0, plotting_lim, 20):
+        #     self.ax.axvline(i, color='gray', linestyle='--', linewidth=0.5)
 
     def draw_frame(self, bit_data, frames, stuff_bit_pos):
 
@@ -122,7 +150,12 @@ class Plotter:
                     
                     if part in self.frame_color.keys() and self.app.hili_chkbox.get():
                         # draw colored plane
-                        self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=self.frame_color[part], alpha=0.5)
+                        if actual_bit_cnt * 2 < len(self.plot_timestamp):
+                            t1 = self.plot_timestamp[actual_bit_cnt]
+                            t2 = self.plot_timestamp[actual_bit_cnt + 1]
+                            self.ax.axvspan(t1, t2, facecolor=self.frame_color[part], alpha=0.5)
+                        else:
+                            self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=self.frame_color[part], alpha=0.5)
 
                     actual_bit_cnt += 1
 
@@ -141,6 +174,7 @@ class Plotter:
             print(data)
             self.decoder.decode_8byte_data(data)
             print(self.decoder.bit_data)
+
             if not self.decoder.bit_data:
                 return
             
