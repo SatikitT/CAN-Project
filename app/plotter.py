@@ -32,7 +32,7 @@ class Plotter:
                             "ACK":"#fbb900",
                             "ACK_DEL":"#fbb900",
                             "EOF":"#ef7c00",
-                            "IFS":"#dadee1"}
+                            "IFS":"#757575"}
 
     def start(self, port, baudrate):
         self.reader = SerialReader(port, baudrate)
@@ -59,68 +59,72 @@ class Plotter:
         for i in range(0, plotting_lim, 20):
             self.ax.axvline(i, color='gray', linestyle='--', linewidth=0.5)
 
-    def draw_frame(self, bit_data, frame_info, stuff_bit_pos):
+    def draw_frame(self, bit_data, frames, stuff_bit_pos):
 
-        frame_type_label = f"Frame type: {frame_info['FrameType']} {frame_info['FrameSubtype']} Frame"
-        self.ax.text(0, 1.02, frame_type_label, transform=self.ax.transAxes,
-                    fontsize=12, fontweight='bold', verticalalignment='bottom',
-                    horizontalalignment='left', color='green')
-        
         actual_bit_cnt = 0
         offset_bits = 4
 
-        frame_info = {'IDLE': [1] * offset_bits, **frame_info, 'IDLE ': [1] * offset_bits}
+        for frame_info in frames:
 
-        for part, bits in frame_info.items():
+            x_pos = actual_bit_cnt * 20 + 10 
+            frame_type_label = f"Frame type: {frame_info['FrameType']} {frame_info['FrameSubtype']} Frame"
+            self.ax.text(x_pos, 1.02, frame_type_label,
+                        fontsize=12, fontweight='bold', verticalalignment='bottom',
+                        horizontalalignment='left', color='black')
             
-            if part in ('FrameType', 'FrameSubtype'):
-                continue
+            if actual_bit_cnt == 0:
+                frame_info = {'IDLE': [1] * offset_bits, **frame_info}
 
-            if type(bits) == int:
-                bits = [bits]
-
-            x_pos = actual_bit_cnt * 20 + 10
-
-            if self.app.bit_chkbox.get():
-                # draw part name
-                self.ax.text(x_pos,  -0.49, part, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
-
-            bit_text = ''.join(str(b) for b in bits)
-            bit_decoded = self.bits_to_hex(bit_text)
-            
-            if self.app.hex_chkbox.get():
-                # draw hex data of each part
-                self.ax.text(x_pos,  -0.3, bit_decoded, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
-            
-            for bit in bits:
-
-                if actual_bit_cnt - offset_bits in stuff_bit_pos:
-                    x_pos = actual_bit_cnt * 20 + 10
-                    
-                    if self.app.text_chkbox.get():
-                        # draw stuff text
-                        self.ax.text(x_pos,  -0.49, 'stuff', fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
-                    
-                    if self.app.bit_chkbox.get():
-                        # draw stuff bit 
-                        self.ax.text(x_pos,  -0.37, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
-                    
-                    if self.app.hili_chkbox.get():
-                        # draw red plane
-                        self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor='#ff6961', alpha=0.5)
-                    actual_bit_cnt += 1
+            for part, bits in frame_info.items():
                 
+                if part in ('FrameType', 'FrameSubtype'):
+                    continue
+
+                if type(bits) == int:
+                    bits = [bits]
+
                 x_pos = actual_bit_cnt * 20 + 10
 
                 if self.app.bit_chkbox.get():
-                    # draw bit 
-                    self.ax.text(x_pos,  -0.37, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color)
-                
-                if part in self.frame_color.keys() and self.app.hili_chkbox.get():
-                    # draw colored plane
-                    self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=self.frame_color[part], alpha=0.5)
+                    # draw part name
+                    self.ax.text(x_pos,  -0.49, part, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
 
-                actual_bit_cnt += 1
+                bit_text = ''.join(str(b) for b in bits)
+                bit_decoded = self.bits_to_hex(bit_text)
+                
+                if self.app.hex_chkbox.get():
+                    # draw hex data of each part
+                    self.ax.text(x_pos,  -0.3, bit_decoded, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
+                
+                for bit in bits:
+
+                    if actual_bit_cnt - offset_bits in stuff_bit_pos:
+                        x_pos = actual_bit_cnt * 20 + 10
+                        
+                        if self.app.text_chkbox.get():
+                            # draw stuff text
+                            self.ax.text(x_pos,  -0.49, 'stuff', fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
+                        
+                        if self.app.bit_chkbox.get():
+                            # draw stuff bit 
+                            self.ax.text(x_pos,  -0.37, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
+                        
+                        if self.app.hili_chkbox.get():
+                            # draw red plane
+                            self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor='#ff6961', alpha=0.5)
+                        actual_bit_cnt += 1
+                    
+                    x_pos = actual_bit_cnt * 20 + 10
+
+                    if self.app.bit_chkbox.get():
+                        # draw bit 
+                        self.ax.text(x_pos,  -0.37, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color)
+                    
+                    if part in self.frame_color.keys() and self.app.hili_chkbox.get():
+                        # draw colored plane
+                        self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=self.frame_color[part], alpha=0.5)
+
+                    actual_bit_cnt += 1
 
         x, y = self.decoder.get_plot_data()
 
@@ -132,9 +136,16 @@ class Plotter:
 
     def update(self, frame):
         data = self.reader.read_data()
+
         if data:
+            print(data)
             self.decoder.decode_8byte_data(data)
+            print(self.decoder.bit_data)
+            if not self.decoder.bit_data:
+                return
+            
             self.setup_graph(self.decoder.bit_data)
             bits, stuff_pos = self.decoder.remove_stuff_bits(self.decoder.bit_data)
-            frame_info = self.decoder.decode_frame_type(bits)
-            self.draw_frame(self.decoder.bit_data, frame_info, stuff_pos)
+            frames = self.decoder.decode_frame_type(bits)
+            self.draw_frame(self.decoder.bit_data, frames, stuff_pos)
+                    

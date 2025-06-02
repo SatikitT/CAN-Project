@@ -37,7 +37,7 @@ class CANDecoder:
                 timestamp = struct.unpack("<I", record[4:8])[0]
             
                 #Debugging output
-                #print(f"{current_bit_index} Rec: {record[0:4]}          {record[4:8]}           Lev: {state}    Dur: {timestamp}")
+                print(f"Rec: {record[0:4]}          {record[4:8]}           Lev: {state}    Dur: {timestamp}")
                 
                 if len(self.timestamp_data) > 0 and timestamp < self.timestamp_data[-1]:
                     self.reset_data()
@@ -63,92 +63,112 @@ class CANDecoder:
                 i += 1
 
     def decode_frame_type(self, bits):
-        frame_info = {}
+        frames = []
+        current_idx = 0
+        print(len(bits))
+        while current_idx < len(bits):
 
-        # SOF is bit 0
+            frame_info = {}
+            try:
+                # SOF is bit 0
+                frame_info['SOF'] = bits[current_idx]
+                current_idx += 1  
 
-        frame_info['SOF'] = bits[0]
+                # IDE (bit 13) and RTR (bit 12 for standard)
+                ide_bit = bits[current_idx + 12]
+                rtr_bit = bits[current_idx + 11]
 
-        # IDE (bit 13) and RTR (bit 12 for standard)
-        ide_bit = bits[13]
-        rtr_bit = bits[12]
+                if ide_bit == 0:
+                    # Standard Frame (11-bit ID)
+                    frame_info['FrameType'] = 'Standard'
+                    frame_info['ID'] = bits[current_idx:current_idx+11]
+                    current_idx += 11
+                    frame_info['RTR'] = bits[current_idx]
+                    current_idx += 1
+                    frame_info['IDE'] = bits[current_idx]
+                    current_idx += 1
+                    frame_info['r0'] = bits[current_idx]
+                    current_idx += 1
 
-        current_idx = 1  # after SOF
+                else:
+                    # Extended Frame (29-bit ID)
+                    frame_info['FrameType'] = 'Extended'
+                    frame_info['BASE ID'] = bits[current_idx:current_idx+11]
+                    current_idx += 11
+                    frame_info['SRR'] = bits[current_idx]
+                    current_idx += 1
+                    frame_info['IDE'] = bits[current_idx]
+                    current_idx += 1
+                    frame_info['EXT ID'] = bits[current_idx:current_idx+18]
+                    current_idx += 18
+                    frame_info['RTR'] = bits[current_idx]
+                    rtr_bit = bits[current_idx]
+                    current_idx += 1
+                    frame_info['r0'] = bits[current_idx]
+                    current_idx += 1
+                    frame_info['r1'] = bits[current_idx]
+                    current_idx += 1
 
-        if ide_bit == 0:
-            # Standard Frame (11-bit ID)
-            frame_info['FrameType'] = 'Standard'
-            frame_info['ID'] = bits[current_idx:current_idx+11]
-            current_idx += 11
-            frame_info['RTR'] = bits[current_idx]
-            current_idx += 1
-            frame_info['IDE'] = bits[current_idx]
-            current_idx += 1
-            frame_info['r0'] = bits[current_idx]
-            current_idx += 1
+                # DLC (always next 4 bits)
+                frame_info['DLC'] = bits[current_idx:current_idx+4]
+                current_idx += 4
 
-        else:
-            # Extended Frame (29-bit ID)
-            frame_info['FrameType'] = 'Extended'
-            frame_info['BASE ID'] = bits[current_idx:current_idx+11]
-            current_idx += 11
-            frame_info['SRR'] = bits[current_idx]
-            current_idx += 1
-            frame_info['IDE'] = bits[current_idx]
-            current_idx += 1
-            frame_info['EXT ID'] = bits[current_idx:current_idx+18]
-            current_idx += 18
-            frame_info['RTR'] = bits[current_idx]
-            rtr_bit = bits[current_idx]
-            current_idx += 1
-            frame_info['r0'] = bits[current_idx]
-            current_idx += 1
-            frame_info['r1'] = bits[current_idx]
-            current_idx += 1
+                dlc_value = int(''.join(str(b) for b in frame_info['DLC']), 2)
+                
+                # Check for Remote Frame
+                if rtr_bit == 1:
+                    frame_info['FrameSubtype'] = 'Remote'
+                    # frame_info['Data'] = []
+                else:
+                    frame_info['FrameSubtype'] = 'Data'
+                    # Read data bytes (8 bits per byte)
+                    frame_info['Data'] = bits[current_idx:current_idx+(dlc_value*8)]
+                    current_idx += dlc_value*8
 
-        # DLC (always next 4 bits)
-        frame_info['DLC'] = bits[current_idx:current_idx+4]
-        current_idx += 4
+                while len(bits[current_idx:current_idx+15]) < 15:
+                    bits.append(1)
+                # CRC (next 15 bits after data)
+                frame_info['CRC'] = bits[current_idx:current_idx+15]
+                current_idx += 15
 
-        dlc_value = int(''.join(str(b) for b in frame_info['DLC']), 2)
-        
-        # Check for Remote Frame
-        if rtr_bit == 1:
-            frame_info['FrameSubtype'] = 'Remote'
-            # frame_info['Data'] = []
-        else:
-            frame_info['FrameSubtype'] = 'Data'
-            # Read data bytes (8 bits per byte)
-            frame_info['Data'] = bits[current_idx:current_idx+(dlc_value*8)]
-            current_idx += dlc_value*8
+                while current_idx >= len(bits):
+                    bits.append(1)
+                    
+                frame_info['CRC_DEL'] = bits[current_idx]
 
-        while len(bits[current_idx:current_idx+15]) < 15:
-            bits.append(1)
-        # CRC (next 15 bits after data)
-        frame_info['CRC'] = bits[current_idx:current_idx+15]
-        current_idx += 15
+                while current_idx+1 >= len(bits):
+                    bits.append(1)
+                    
+                frame_info['ACK'] = bits[current_idx+1]
 
-        while current_idx >= len(bits):
-            bits.append(1)
+                while current_idx+2 >= len(bits):
+                    bits.append(1)
+                    
+                frame_info['ACK_DEL'] = bits[current_idx+2]
+
+                while current_idx+10 >= len(bits):
+                    bits.append(1)
+                
+                frame_info['EOF'] = bits[current_idx+3:current_idx+10]
+                current_idx += 10  # Move past EOF
+
+                while current_idx+3 >= len(bits):
+                    bits.append(1)
+                
+                frame_info['IFS'] = bits[current_idx:current_idx+3]
+                current_idx += 3  # Move past IFS
+
+                frames.append(frame_info)
+                
+
+                print(f"Current idx {current_idx} len {len(bits)}")
             
-        frame_info['CRC_DEL'] = bits[current_idx]
+            except Exception as e:
+                print(f"Error decoding frame: {e}")
+                break
 
-        while current_idx+1 >= len(bits):
-            bits.append(1)
-            
-        frame_info['ACK'] = bits[current_idx+1]
-
-        while current_idx+2 >= len(bits):
-            bits.append(1)
-            
-        frame_info['ACK_DEL'] = bits[current_idx+2]
-
-        while current_idx+10 >= len(bits):
-            bits.append(1)
-        
-        frame_info['EOF'] = bits[current_idx+3:current_idx+10]
-
-        return frame_info
+        print("finished decoding frames")
+        return frames
     
     def remove_stuff_bits(self, bitstream):
         un_stf_bits = [bitstream[0]]
