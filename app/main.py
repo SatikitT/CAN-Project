@@ -69,10 +69,10 @@ class LogicAnalyzerApp(tk.Tk):
 
         tk.Label(top_frame, text="Display:", bg="lightgrey", font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
 
-        self.bit_chkbox = tk.BooleanVar()
-        self.hex_chkbox = tk.BooleanVar()
-        self.hili_chkbox = tk.BooleanVar()
-        self.text_chkbox = tk.BooleanVar()
+        self.bit_chkbox = tk.BooleanVar(value=True)
+        self.hex_chkbox = tk.BooleanVar(value=True)
+        self.hili_chkbox = tk.BooleanVar(value=True)
+        self.text_chkbox = tk.BooleanVar(value=True)
 
         tk.Checkbutton(top_frame, text="bits", bg="lightgrey", font=("Segoe UI", 20), variable=self.bit_chkbox).pack(side=tk.LEFT, padx=(20, 5))
         tk.Checkbutton(top_frame, text="hex", bg="lightgrey", font=("Segoe UI", 20), variable=self.hex_chkbox).pack(side=tk.LEFT, padx=(20, 5))
