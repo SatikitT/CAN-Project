@@ -90,6 +90,8 @@ class LogicAnalyzerApp(tk.Tk):
         self.canvas = FigureCanvasTkAgg(self.figure, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+        # self.cid = self.canvas.mpl_connect("motion_notify_event", self.on_hover)
 
     def get_serial_ports(self):
         ports = serial.tools.list_ports.comports()
