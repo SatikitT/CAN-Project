@@ -14,6 +14,7 @@ class Plotter:
 
         self.font_size = 10
         self.font_color = 'black'
+        self.raw_data_log = []
 
         self.plot_timestamp = []
 
@@ -31,9 +32,9 @@ class Plotter:
                             "DLC":"#00a765",
                             "Data":"#028fc3",
                             "CRC":"#b70032",
-                            "CRC_DEL":"#b70032",
+                            "CD":"#b70032",
                             "ACK":"#fbb900",
-                            "ACK_DEL":"#fbb900",
+                            "AD":"#fbb900",
                             "EOF":"#ef7c00",
                             "IFS":"#757575"}
 
@@ -111,9 +112,10 @@ class Plotter:
             x_pos = self.get_pos(actual_bit_cnt, offset_bits) 
 
             frame_type_label = f"Frame type: {frame_info['FrameType']} {frame_info['FrameSubtype']} Frame"
-            self.ax.text(x_pos, 1.02, frame_type_label,
+            self.ax.text(x_pos, 1.05, frame_type_label,
                         fontsize=12, fontweight='bold', verticalalignment='bottom',
-                        horizontalalignment='left', color='black')
+                        horizontalalignment='left', color='black',
+                        bbox=dict(facecolor='yellow', edgecolor='black', boxstyle='round,pad=0.13'))
             
             if actual_bit_cnt == 0:
                 frame_info = {'IDLE': [1] * offset_bits, **frame_info}
@@ -130,14 +132,27 @@ class Plotter:
 
                 if self.app.bit_chkbox.get():
                     # draw part name
-                    self.ax.text(x_pos,  -0.49, part, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
-
+                    self.ax.text(
+                        x_pos, -0.46, part,
+                        fontsize=self.font_size,
+                        ha='center', va='baseline',
+                        color='black',
+                        rotation=90,
+                        bbox=dict(facecolor='yellow', edgecolor='black', boxstyle='round,pad=0.13')
+                    )
                 bit_text = ''.join(str(b) for b in bits)
                 bit_decoded = self.bits_to_hex(bit_text)
                 
                 if self.app.hex_chkbox.get():
                     # draw hex data of each part
-                    self.ax.text(x_pos,  -0.3, bit_decoded, fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
+                    self.ax.text(
+                        x_pos, -0.23, bit_decoded,
+                        fontsize=self.font_size,
+                        ha='center', va='baseline',
+                        color='black',
+                        rotation=90,
+                        bbox=dict(facecolor='yellow', edgecolor='black', boxstyle='round,pad=0.13')
+                    )
                 
                 for bit in bits:
 
@@ -146,11 +161,19 @@ class Plotter:
                         
                         if self.app.text_chkbox.get():
                             # draw stuff text
-                            self.ax.text(x_pos,  -0.49, 'stuff', fontsize=self.font_size, ha='center', va='baseline', color=self.font_color, rotation=90)
+                            self.ax.text(
+                                x_pos, -0.46, 'stuff',
+                                fontsize=self.font_size,
+                                fontweight='bold',
+                                ha='center', va='baseline',
+                                color='white',
+                                rotation=90,
+                                bbox=dict(facecolor='red', edgecolor='black', boxstyle='round,pad=0.12')
+                            )
                         
                         if self.app.bit_chkbox.get():
                             # draw stuff bit 
-                            self.ax.text(x_pos, -0.37, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
+                            self.ax.text(x_pos,  -0.33, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
                         
                         if self.app.hili_chkbox.get():
                             act_bit_mins_4 = actual_bit_cnt - offset_bits
@@ -164,7 +187,7 @@ class Plotter:
 
                     if self.app.bit_chkbox.get():
                         # draw bit 
-                        self.ax.text(x_pos,  -0.37, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color)
+                        self.ax.text(x_pos,  -0.33, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color)
                     
                     if part in self.frame_color.keys() and self.app.hili_chkbox.get():
                         # draw colored plane
@@ -183,8 +206,14 @@ class Plotter:
         x, y = self.decoder.get_plot_data()
 
         idle_duration = 20
-        y = [0, offset_bits * idle_duration] + [yi + offset_bits * idle_duration for yi in y]
-        x = [1,1] + x
+        start_offset = offset_bits * idle_duration
+        x = [1, 1] + x
+        y = [0, start_offset] + [yi + start_offset for yi in y]
+
+        # ต่อท้ายค่าจุดสุดท้ายด้วย logic level เดิม และเวลาเพิ่มอีกช่วงเพื่อให้ถึง IFS
+        if len(x) > 0 and len(y) > 0:
+            x.append(x[-1])  # logic level คงเดิม
+            y.append(y[-1] + idle_duration * 8)  # เพิ่มเวลาอีก ~160 ticks เพื่อลากถึง IFS
 
         self.ax.step(y, x, where='post', color='blue', linewidth=2)
 
@@ -192,6 +221,7 @@ class Plotter:
         data = self.reader.read_data()
 
         if data:
+            self.raw_data_log.append(data)  # <--- เพิ่มบรรทัดนี้
             print(data)
             self.decoder.decode_8byte_data(data)
             print(self.decoder.bit_data)

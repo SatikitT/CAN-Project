@@ -52,32 +52,38 @@ class LogicAnalyzerApp(tk.Tk):
         self.reset_icon   = ImageTk.PhotoImage(Image.open("app/icons/record.png").resize((24, 24)))
 
     def create_top_panel(self):
-        top_frame = tk.Frame(self, bg="lightgrey", height=100)
+        top_frame = tk.Frame(self, bg="lightblue", height=100)
         top_frame.pack(fill=tk.X)
         top_frame.pack_propagate(False)
 
         # Port
-        tk.Label(top_frame, text="Port", bg="lightgrey", font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Label(top_frame, text="Port", bg=top_frame['bg'], font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
         self.port_combo = ttk.Combobox(top_frame, values=[], width=20)
         self.port_combo.pack(side=tk.LEFT)
 
-        tk.Button(top_frame, image=self.refresh_icon, bg="lightgrey", bd=0, command=self.update_serial_ports).pack(side=tk.LEFT, padx=10)
+        tk.Button(top_frame, image=self.refresh_icon, bg=top_frame['bg'], bd=0, command=self.update_serial_ports).pack(side=tk.LEFT, padx=10)
 
-        tk.Button(top_frame, image=self.start_icon, bg="lightgrey", bd=0, command=self.start).pack(side=tk.LEFT, padx=10)
-        tk.Button(top_frame, image=self.stop_icon, bg="lightgrey", bd=0, command=self.stop).pack(side=tk.LEFT, padx=10)
+        tk.Button(top_frame, image=self.start_icon, bg=top_frame['bg'], bd=0, command=self.start).pack(side=tk.LEFT, padx=10)
+        tk.Button(top_frame, image=self.stop_icon, bg=top_frame['bg'], bd=0, command=self.stop).pack(side=tk.LEFT, padx=10)
         # tk.Button(top_frame, image=self.reset_icon, bg="lightgrey", bd=0, command=self.reset).pack(side=tk.LEFT, padx=10)
 
-        tk.Label(top_frame, text="Display:", bg="lightgrey", font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Label(top_frame, text="Display:", bg=top_frame['bg'], font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
 
         self.bit_chkbox = tk.BooleanVar(value=True)
         self.hex_chkbox = tk.BooleanVar(value=True)
         self.hili_chkbox = tk.BooleanVar(value=True)
         self.text_chkbox = tk.BooleanVar(value=True)
 
-        tk.Checkbutton(top_frame, text="bits", bg="lightgrey", font=("Segoe UI", 20), variable=self.bit_chkbox).pack(side=tk.LEFT, padx=(20, 5))
-        tk.Checkbutton(top_frame, text="hex", bg="lightgrey", font=("Segoe UI", 20), variable=self.hex_chkbox).pack(side=tk.LEFT, padx=(20, 5))
-        tk.Checkbutton(top_frame, text="hightlight", bg="lightgrey", font=("Segoe UI", 20), variable=self.hili_chkbox).pack(side=tk.LEFT, padx=(20, 5))
-        tk.Checkbutton(top_frame, text="text", bg="lightgrey", font=("Segoe UI", 20), variable=self.text_chkbox).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Checkbutton(top_frame, text="bits", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.bit_chkbox).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Checkbutton(top_frame, text="hex", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.hex_chkbox).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Checkbutton(top_frame, text="hightlight", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.hili_chkbox).pack(side=tk.LEFT, padx=(20, 5))
+        tk.Checkbutton(top_frame, text="text", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.text_chkbox).pack(side=tk.LEFT, padx=(20, 5))
+
+        # Save Raw Button
+        tk.Button(top_frame, text="Save Raw", bg="lightgrey", font=("Segoe UI", 14), command=self.save_raw_data).pack(side=tk.LEFT, padx=10)
+
+        # Save Graph Button
+        tk.Button(top_frame, text="Save Graph", bg="lightgrey", font=("Segoe UI", 14), command=self.save_graph_image).pack(side=tk.LEFT, padx=10)
 
     def create_plot_area(self):
         self.figure, self.ax = plt.subplots(figsize=(10, 5))
@@ -164,6 +170,29 @@ class LogicAnalyzerApp(tk.Tk):
     def on_close(self):
         self.quit()
         self.destroy()
+
+    def save_raw_data(self):
+        raw_data_list = self.plotter.raw_data_log
+        if not raw_data_list:
+            print("No raw data to save.")
+            return
+
+        file_path = filedialog.asksaveasfilename(defaultextension=".txt",
+                                                filetypes=[("Text files", "*.txt")],
+                                                title="Save Raw Data")
+        if file_path:
+            with open(file_path, "w") as file:
+                for raw in raw_data_list:
+                    file.write(repr(raw) + '\n')  # เขียนเป็น b'...' format
+            print(f"Raw data saved to {file_path}")
+
+    def save_graph_image(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".png",
+                                                 filetypes=[("PNG Image", "*.png")],
+                                                 title="Save Graph Image")
+        if file_path:
+            self.figure.savefig(file_path)
+            print(f"Graph image saved to {file_path}")
 
 if __name__ == "__main__":
     app = LogicAnalyzerApp()

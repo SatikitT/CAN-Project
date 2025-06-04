@@ -134,7 +134,7 @@ class CANDecoder:
                 while current_idx >= len(bits):
                     bits.append(1)
                     
-                frame_info['CRC_DEL'] = bits[current_idx]
+                frame_info['CD'] = bits[current_idx]
 
                 while current_idx+1 >= len(bits):
                     bits.append(1)
@@ -144,7 +144,7 @@ class CANDecoder:
                 while current_idx+2 >= len(bits):
                     bits.append(1)
                     
-                frame_info['ACK_DEL'] = bits[current_idx+2]
+                frame_info['AD'] = bits[current_idx+2]
 
                 while current_idx+10 >= len(bits):
                     bits.append(1)
