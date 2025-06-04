@@ -221,7 +221,7 @@ class Plotter:
         data = self.reader.read_data()
 
         if data:
-            self.raw_data_log.append(data)  # <--- เพิ่มบรรทัดนี้
+            self.raw_data_log.append(data)
             print(data)
             self.decoder.decode_8byte_data(data)
             print(self.decoder.bit_data)
