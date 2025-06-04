@@ -185,7 +185,7 @@ class CANDecoder:
                 un_stf_bits.append(bit)
             else:
                 if cnt == 5:
-                    cnt = 0
+                    cnt = 1
                     # add stuff bit position to list
                     stf_bit_pos.append(bit_cnt)
                 else:
