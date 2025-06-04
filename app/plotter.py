@@ -236,7 +236,6 @@ class Plotter:
         print(data)
         if data:
             self.raw_data_log.append(data)
-
             self.decoder.decode_8byte_data(data)
 
             if not self.decoder.bit_data:

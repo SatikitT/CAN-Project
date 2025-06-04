@@ -51,7 +51,7 @@ class LogicAnalyzerApp(tk.Tk):
         self.reset_icon   = ImageTk.PhotoImage(Image.open("app/icons/record.png").resize((24, 24)))
 
     def create_top_panel(self):
-        top_frame = tk.Frame(self, bg="lightblue", height=100)
+        top_frame = tk.Frame(self, bg="lightgrey", height=100)
         top_frame.pack(fill=tk.X)
         top_frame.pack_propagate(False)
 
