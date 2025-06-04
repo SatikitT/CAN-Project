@@ -68,8 +68,7 @@ class CANDecoder:
     def decode_frame_type(self, bits):
         frames = []
         current_idx = 0
-        # print(len(bits))
-        
+        print(len(bits))
         while current_idx < len(bits):
 
             frame_info = {}
@@ -171,8 +170,6 @@ class CANDecoder:
                 print(f"Error decoding frame: {e}")
                 break
             
-            frames.append(frame_info)
-
             frames.append(frame_info)
 
         print("finished decoding frames")

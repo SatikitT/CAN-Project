@@ -2,6 +2,7 @@ from decoder import CANDecoder
 from serial_reader import SerialReader
 import numpy as np
 import time
+from matplotlib import patches
 
 class Plotter:
 
@@ -11,6 +12,10 @@ class Plotter:
         self.reader = None
         self.ax = None
         self.app = app
+
+        self.frame_patches = []     # เก็บสี่เหลี่ยมของแต่ละ field
+        self.tooltip       = None   # annotation ที่จะแสดง
+        self._cid          = None   # id ของ callback mouse-move
 
         self.font_size = 9
         self.font_color = 'black'
@@ -236,6 +241,7 @@ class Plotter:
         print(data)
         if data:
             self.raw_data_log.append(data)
+
             self.decoder.decode_8byte_data(data)
 
             if not self.decoder.bit_data:
