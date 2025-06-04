@@ -42,6 +42,9 @@ class CANDecoder:
                 if len(self.timestamp_data) > 0 and timestamp < self.timestamp_data[-1]:
                     self.reset_data()
 
+                if timestamp > 3150:
+                    break
+
                 if len(self.state_data) >= 1:
                     self.state_data.append(self.state_data[-1])
                     self.timestamp_data.append(timestamp)
@@ -122,8 +125,13 @@ class CANDecoder:
                 else:
                     frame_info['FrameSubtype'] = 'Data'
                     # Read data bytes (8 bits per byte)
-                    frame_info['Data'] = bits[current_idx:current_idx+(dlc_value*8)]
-                    current_idx += dlc_value*8
+                    for i in range(dlc_value):
+                        frame_info[f'Data{i}'] = bits[current_idx:current_idx+8]
+                        current_idx += 8
+                    # current_idx += dlc_value*8
+
+                if len(bits[current_idx:current_idx+15]) < 5:
+                    break
 
                 while len(bits[current_idx:current_idx+15]) < 15:
                     bits.append(1)
@@ -157,15 +165,12 @@ class CANDecoder:
                 
                 frame_info['IFS'] = bits[current_idx:current_idx+3]
                 current_idx += 3  # Move past IFS
-
-                frames.append(frame_info)
-                
-
-                print(f"Current idx {current_idx} len {len(bits)}")
             
             except Exception as e:
                 print(f"Error decoding frame: {e}")
                 break
+            
+            frames.append(frame_info)
 
         print("finished decoding frames")
         return frames

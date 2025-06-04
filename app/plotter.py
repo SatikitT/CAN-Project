@@ -12,7 +12,7 @@ class Plotter:
         self.ax = None
         self.app = app
 
-        self.font_size = 10
+        self.font_size = 9
         self.font_color = 'black'
         self.raw_data_log = []
 
@@ -43,9 +43,9 @@ class Plotter:
 
     def bits_to_hex(self, bits):
         if bits:
-            return hex(int(bits, 2))
+            return f"0x{int(bits, 2):02x}"
         else:
-            return '0x0' 
+            return "0x00"
     
     def retrive_bit_timestamp(self, timestamp_data):
         actual_bit_timestamp = []
@@ -77,16 +77,8 @@ class Plotter:
         self.ax.set_ylabel('Logic Level')
         self.ax.grid(True, axis='y')
 
-        plotting_lim = (len(data) * 20) + 500
-
-        self.ax.set_xlim(0, plotting_lim)
         
         self.plot_timestamp = self.retrive_bit_timestamp(self.decoder.timestamp_data)
-
-        print(self.plot_timestamp)
-        # # draw dot line
-        # for i in range(0, plotting_lim, 20):
-        #     self.ax.axvline(i, color='gray', linestyle='--', linewidth=0.5)
 
     def get_pos(self, bit_cnt, offset_bits=4):
         pos = 0
@@ -106,16 +98,17 @@ class Plotter:
 
         actual_bit_cnt = 0
         offset_bits = 4
-
+        print(frames)
         for frame_info in frames:
             
             x_pos = self.get_pos(actual_bit_cnt, offset_bits) 
 
-            frame_type_label = f"Frame type: {frame_info['FrameType']} {frame_info['FrameSubtype']} Frame"
-            self.ax.text(x_pos, 1.05, frame_type_label,
-                        fontsize=12, fontweight='bold', verticalalignment='bottom',
-                        horizontalalignment='left', color='black',
-                        bbox=dict(facecolor='yellow', edgecolor='black', boxstyle='round,pad=0.13'))
+            if self.app.frametype_chkbox.get():
+                frame_type_label = f"Frame type: {frame_info['FrameType']} {frame_info['FrameSubtype']} Frame"
+                self.ax.text(x_pos, 1.05, frame_type_label,
+                            fontsize=12, fontweight='bold', verticalalignment='bottom',
+                            horizontalalignment='left', color='black',
+                            bbox=dict(facecolor='yellow', edgecolor='black', boxstyle='round,pad=0.13'))
             
             if actual_bit_cnt == 0:
                 frame_info = {'IDLE': [1] * offset_bits, **frame_info}
@@ -130,6 +123,8 @@ class Plotter:
 
                 x_pos = self.get_pos(actual_bit_cnt, offset_bits) 
 
+                rot = 90 if len(bits) == 1 else 0
+
                 if self.app.bit_chkbox.get():
                     # draw part name
                     self.ax.text(
@@ -137,7 +132,7 @@ class Plotter:
                         fontsize=self.font_size,
                         ha='center', va='baseline',
                         color='black',
-                        rotation=90,
+                        rotation=rot,
                         bbox=dict(facecolor='yellow', edgecolor='black', boxstyle='round,pad=0.13')
                     )
                 bit_text = ''.join(str(b) for b in bits)
@@ -175,12 +170,15 @@ class Plotter:
                             # draw stuff bit 
                             self.ax.text(x_pos,  -0.33, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
                         
+                        act_bit_mins_4 = actual_bit_cnt - offset_bits
+                        t1 = self.plot_timestamp[act_bit_mins_4 * 2] + 80
+                        t2 = self.plot_timestamp[act_bit_mins_4 * 2 + 1] + 80
+
                         if self.app.hili_chkbox.get():
-                            act_bit_mins_4 = actual_bit_cnt - offset_bits
-                            t1 = self.plot_timestamp[act_bit_mins_4 * 2] + 80
-                            t2 = self.plot_timestamp[act_bit_mins_4 * 2 + 1] + 80
                             self.ax.axvspan(t1, t2, facecolor='#ff6961', alpha=0.5)
-                            self.ax.axvline(t2, color='grey', linestyle='-', linewidth=0.5)
+                            
+                        self.ax.axvline(t2, color='grey', linestyle='-', linewidth=0.5)
+
                         actual_bit_cnt += 1
                     
                     x_pos = self.get_pos(actual_bit_cnt, offset_bits)
@@ -189,42 +187,57 @@ class Plotter:
                         # draw bit 
                         self.ax.text(x_pos,  -0.33, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color)
                     
-                    if part in self.frame_color.keys() and self.app.hili_chkbox.get():
+                    act_bit_mins_4 = actual_bit_cnt - offset_bits
+                    t1 = self.plot_timestamp[act_bit_mins_4 * 2] + 80 if actual_bit_cnt > 3 and act_bit_mins_4 * 2 < len(self.plot_timestamp) else 0
+                    t2 = self.plot_timestamp[act_bit_mins_4 * 2 + 1] + 80 if actual_bit_cnt > 3 and act_bit_mins_4 * 2 < len(self.plot_timestamp) else 0
+                    
+                    color = self.frame_color['Data'] if part.startswith("Data") else self.frame_color[part]
+
+                    if self.app.hili_chkbox.get():
                         # draw colored plane
-                        act_bit_mins_4 = actual_bit_cnt - offset_bits
                         if actual_bit_cnt > 3 and act_bit_mins_4 * 2 < len(self.plot_timestamp):
-                            t1 = self.plot_timestamp[act_bit_mins_4 * 2] + 80
-                            t2 = self.plot_timestamp[act_bit_mins_4 * 2 + 1] + 80
-                            self.ax.axvspan(t1, t2, facecolor=self.frame_color[part], alpha=0.5)
-                            self.ax.axvline(t2, color='grey', linestyle='-', linewidth=0.5)
+                            self.ax.axvspan(t1, t2, facecolor=color, alpha=0.5)
                         else:
-                            self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=self.frame_color[part], alpha=0.5)
-                            self.ax.axvline(x_pos + 10, color='grey', linestyle='-', linewidth=0.5)
+                            self.ax.axvspan(x_pos - 10, x_pos + 10, facecolor=color, alpha=0.5)
+                            
+                    if actual_bit_cnt > 3 and act_bit_mins_4 * 2 < len(self.plot_timestamp):
+                        self.ax.axvline(t2, color='grey', linestyle='-', linewidth=0.5)
+                    else:
+                        self.ax.axvline(x_pos + 10, color='grey', linestyle='-', linewidth=0.5)
 
                     actual_bit_cnt += 1
 
         x, y = self.decoder.get_plot_data()
+
+        idle_duration = 20                           
+        total_bits      = actual_bit_cnt            
+        last_needed_ts  = (total_bits - offset_bits) * idle_duration 
+
+        if y and last_needed_ts > y[-1]:
+            y.append(last_needed_ts) 
+            x.append(1)              
 
         idle_duration = 20
         start_offset = offset_bits * idle_duration
         x = [1, 1] + x
         y = [0, start_offset] + [yi + start_offset for yi in y]
 
-        # ต่อท้ายค่าจุดสุดท้ายด้วย logic level เดิม และเวลาเพิ่มอีกช่วงเพื่อให้ถึง IFS
         if len(x) > 0 and len(y) > 0:
-            x.append(x[-1])  # logic level คงเดิม
-            y.append(y[-1] + idle_duration * 8)  # เพิ่มเวลาอีก ~160 ticks เพื่อลากถึง IFS
+            x.append(x[-1])
+            y.append(y[-1] + idle_duration * 8)
 
+        plotting_lim = max(y)
+        self.ax.set_xlim(0, plotting_lim)
+        
         self.ax.step(y, x, where='post', color='blue', linewidth=2)
 
     def update(self, frame):
         data = self.reader.read_data()
-
+        print(data)
         if data:
-            self.raw_data_log.append(data)  # <--- เพิ่มบรรทัดนี้
-            print(data)
+            self.raw_data_log.append(data)
+
             self.decoder.decode_8byte_data(data)
-            print(self.decoder.bit_data)
 
             if not self.decoder.bit_data:
                 return
@@ -232,5 +245,20 @@ class Plotter:
             self.setup_graph(self.decoder.bit_data)
             bits, stuff_pos = self.decoder.remove_stuff_bits(self.decoder.bit_data)
             frames = self.decoder.decode_frame_type(bits)
+            frame = frames[0] if frames else None
+            if frame:
+                if 'ID' in frame:
+                    can_id_bin = ''.join(str(b) for b in frame['ID'])
+                elif 'BASE ID' in frame:
+                    can_id_bin = ''.join(str(b) for b in frame['BASE ID'])
+                else:
+                    can_id_bin = None
+
+                if can_id_bin:
+                    can_id = int(can_id_bin, 2)
+                    if can_id == 0x650:
+                        self.app.disable_all_checkboxes()
+                    else:
+                        self.app.enable_all_checkboxes()
             self.draw_frame(self.decoder.bit_data, frames, stuff_pos)
                     

@@ -26,7 +26,6 @@ class LogicAnalyzerApp(tk.Tk):
         style = ttk.Style(self)
         style.configure('TCheckbutton', font = 11)
 
-        # self.state('zoomed')
         self.configure(bg="white")
 
         self.stop_event   = threading.Event()
@@ -62,10 +61,8 @@ class LogicAnalyzerApp(tk.Tk):
         self.port_combo.pack(side=tk.LEFT)
 
         tk.Button(top_frame, image=self.refresh_icon, bg=top_frame['bg'], bd=0, command=self.update_serial_ports).pack(side=tk.LEFT, padx=10)
-
         tk.Button(top_frame, image=self.start_icon, bg=top_frame['bg'], bd=0, command=self.start).pack(side=tk.LEFT, padx=10)
         tk.Button(top_frame, image=self.stop_icon, bg=top_frame['bg'], bd=0, command=self.stop).pack(side=tk.LEFT, padx=10)
-        # tk.Button(top_frame, image=self.reset_icon, bg="lightgrey", bd=0, command=self.reset).pack(side=tk.LEFT, padx=10)
 
         tk.Label(top_frame, text="Display:", bg=top_frame['bg'], font=("Segoe UI", 20)).pack(side=tk.LEFT, padx=(20, 5))
 
@@ -73,11 +70,24 @@ class LogicAnalyzerApp(tk.Tk):
         self.hex_chkbox = tk.BooleanVar(value=True)
         self.hili_chkbox = tk.BooleanVar(value=True)
         self.text_chkbox = tk.BooleanVar(value=True)
+        self.frametype_chkbox = tk.BooleanVar(value=True)
 
-        tk.Checkbutton(top_frame, text="bits", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.bit_chkbox).pack(side=tk.LEFT, padx=(20, 5))
-        tk.Checkbutton(top_frame, text="hex", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.hex_chkbox).pack(side=tk.LEFT, padx=(20, 5))
-        tk.Checkbutton(top_frame, text="hightlight", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.hili_chkbox).pack(side=tk.LEFT, padx=(20, 5))
-        tk.Checkbutton(top_frame, text="text", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.text_chkbox).pack(side=tk.LEFT, padx=(20, 5))
+        cb_bit = tk.Checkbutton(top_frame, text="bits", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.bit_chkbox, command=self.refresh_plot)
+        cb_bit.pack(side=tk.LEFT, padx=(20, 5))
+
+        cb_hex = tk.Checkbutton(top_frame, text="hex", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.hex_chkbox, command=self.refresh_plot)
+        cb_hex.pack(side=tk.LEFT, padx=(20, 5))
+
+        cb_hili = tk.Checkbutton(top_frame, text="highlight", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.hili_chkbox, command=self.refresh_plot)
+        cb_hili.pack(side=tk.LEFT, padx=(20, 5))
+
+        cb_stuff = tk.Checkbutton(top_frame, text="Stuff", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.text_chkbox, command=self.refresh_plot)
+        cb_stuff.pack(side=tk.LEFT, padx=(20, 5))
+
+        cb_frametype = tk.Checkbutton(top_frame, text="Frame type", bg=top_frame['bg'], font=("Segoe UI", 20), variable=self.frametype_chkbox, command=self.refresh_plot)
+        cb_frametype.pack(side=tk.LEFT, padx=(20, 5))
+
+        self.all_checkbuttons = [cb_bit, cb_hex, cb_hili, cb_stuff, cb_frametype]
 
         # Save Raw Button
         tk.Button(top_frame, text="Save Raw", bg="lightgrey", font=("Segoe UI", 14), command=self.save_raw_data).pack(side=tk.LEFT, padx=10)
@@ -96,8 +106,6 @@ class LogicAnalyzerApp(tk.Tk):
         self.canvas = FigureCanvasTkAgg(self.figure, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        
-        # self.cid = self.canvas.mpl_connect("motion_notify_event", self.on_hover)
 
     def get_serial_ports(self):
         ports = serial.tools.list_ports.comports()
@@ -115,7 +123,7 @@ class LogicAnalyzerApp(tk.Tk):
         
         self.stop_event.clear()
         
-        #check if port selected
+        # check if port selected
         selected_port = self.port_combo.get()
         if "No Ports" in selected_port or not selected_port:
             print("No valid port selected.")
@@ -147,10 +155,15 @@ class LogicAnalyzerApp(tk.Tk):
             print(f"Error opening port: {e}")
     
     def periodic_update(self):
-        self.plotter.update(None)
-        self.canvas.draw()
+        try:
+            self.plotter.update(None)
+            self.canvas.draw()
+        except Exception as e:
 
-        # Reschedule only if not stopping
+            print(f"\nException caught: {e}\n")
+            self.plotter.decoder.reset_data()
+            return         
+
         if not self.stop_event.is_set():
             self.after_id = self.after(READ_INTERVAL, self.periodic_update)
 
@@ -193,6 +206,36 @@ class LogicAnalyzerApp(tk.Tk):
         if file_path:
             self.figure.savefig(file_path)
             print(f"Graph image saved to {file_path}")
+    
+    def disable_all_checkboxes(self):
+        for cb in self.all_checkbuttons:
+            cb.config(state='disabled')
+
+        self.bit_chkbox.set(False)
+        self.hex_chkbox.set(False)
+        self.hili_chkbox.set(False)
+        self.text_chkbox.set(False)
+        self.frametype_chkbox.set(False)
+
+    def enable_all_checkboxes(self):
+        self.bit_chkbox.set(True)
+        self.hex_chkbox.set(True)
+        self.hili_chkbox.set(True)
+        self.text_chkbox.set(True)
+        self.frametype_chkbox.set(True)
+
+        for cb in self.all_checkbuttons:
+            cb.config(state='normal')
+    
+    def refresh_plot(self):
+        try:
+            self.plotter.setup_graph(self.plotter.decoder.bit_data)
+            bits, stuff_pos = self.plotter.decoder.remove_stuff_bits(self.plotter.decoder.bit_data)
+            frames = self.plotter.decoder.decode_frame_type(bits)
+            self.plotter.draw_frame(self.plotter.decoder.bit_data, frames, stuff_pos)
+            self.canvas.draw()
+        except Exception as e:
+            print(f"Error refreshing plot: {e}")
 
 if __name__ == "__main__":
     app = LogicAnalyzerApp()
