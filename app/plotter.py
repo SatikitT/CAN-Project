@@ -78,7 +78,7 @@ class Plotter:
 
         self.ax.clear()
         self.ax.set_ylim(-0.5, 1.5)
-        self.ax.set_xlabel('Time (ticks)')
+        self.ax.set_xlabel('Time (ticks)\n 0.1 us/tick')
         self.ax.set_ylabel('Logic Level')
         self.ax.grid(True, axis='y')
 
@@ -139,7 +139,7 @@ class Plotter:
                 if self.app.bit_chkbox.get():
                     # draw part name
                     self.ax.text(
-                        x_pos, -0.46 + lst_1bit_prt_cnt * 0.06, part,
+                        x_pos, -0.45 + lst_1bit_prt_cnt * 0.1, part,
                         fontsize=self.font_size,
                         ha='left', va='baseline',
                         color='black',
@@ -149,7 +149,7 @@ class Plotter:
                 if self.app.hex_chkbox.get():
                     # draw hex data of each part
                     self.ax.text(
-                        x_pos, -0.49 + lst_1bit_prt_cnt * 0.06, bit_decoded,
+                        x_pos, -0.5 + lst_1bit_prt_cnt * 0.1, bit_decoded,
                         fontsize=self.font_size,
                         ha='left', va='baseline',
                         color='black',
@@ -170,10 +170,11 @@ class Plotter:
 
                             # draw stuff text
                             self.ax.text(
-                                x_pos, -0.375, 'stuff',
+                                x_pos, 0.5, 'stuff',
                                 fontsize=self.font_size,
                                 fontweight='bold',
                                 ha='center',
+                                va='center',
                                 color='white',
                                 rotation=90,
                                 bbox=dict(facecolor='red', edgecolor='black', boxstyle='round,pad=0.2')
@@ -182,7 +183,7 @@ class Plotter:
                         if self.app.bit_chkbox.get():
 
                             # draw stuff bit 
-                            self.ax.text(x_pos,  -0.24, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
+                            self.ax.text(x_pos,  -0.05, bit_data[actual_bit_cnt - offset_bits], fontsize=self.font_size, ha='center', va='center', color=self.font_color)
                         
                         act_bit_mins_4 = actual_bit_cnt - offset_bits
                         t1 = self.plot_timestamp[act_bit_mins_4 * 2] + 80
@@ -199,7 +200,7 @@ class Plotter:
 
                     if self.app.bit_chkbox.get():
                         # draw bit 
-                        self.ax.text(x_pos,  -0.24, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color)
+                        self.ax.text(x_pos,  -0.05, str(bit), fontsize=self.font_size, ha='center', va='center', color=self.font_color)
                     
                     act_bit_mins_4 = actual_bit_cnt - offset_bits
                     t1 = self.plot_timestamp[act_bit_mins_4 * 2] + 80 if actual_bit_cnt > 3 and act_bit_mins_4 * 2 < len(self.plot_timestamp) else 0

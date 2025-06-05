@@ -97,7 +97,7 @@ class LogicAnalyzerApp(tk.Tk):
 
     def create_plot_area(self):
         self.figure, self.ax = plt.subplots(figsize=(10, 5))
-        self.ax.set_xlabel("Time (ticks)")
+        self.ax.set_xlabel("Time (ticks)\n 0.1 us/tick")
         self.ax.set_ylabel("Logic level")
         self.ax.set_xlim(0, 2500)
         self.ax.set_ylim(-0.5, 1.5)
