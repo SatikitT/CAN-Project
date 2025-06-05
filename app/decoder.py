@@ -36,8 +36,8 @@ class CANDecoder:
 
                 timestamp = struct.unpack("<I", record[4:8])[0]
             
-                #Debugging output
-                print(f"Rec: {record[0:4]}          {record[4:8]}           Lev: {state}    Dur: {timestamp}")
+                # Debugging output
+                # print(f"Rec: {record[0:4]}          {record[4:8]}           Lev: {state}    Dur: {timestamp}")
                 
                 if len(self.timestamp_data) > 0 and timestamp < self.timestamp_data[-1]:
                     self.reset_data()
